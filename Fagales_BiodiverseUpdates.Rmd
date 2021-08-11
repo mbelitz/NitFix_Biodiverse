@@ -1,0 +1,250 @@
+---
+title: "Fagales Biodiverse Results"
+author: "Michael W Belitz"
+date: "8/10/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyverse)
+library(raster)
+library(pals)
+```
+
+## Species Richness Results at multiple spatial scales
+
+```{r spp_rich, echo = F, message=FALSE}
+fagales_15km <- data.table::fread("data/SDM_Results/Fagales_ModelResults_AsCSV_15km.csv")
+rich_15 <- fagales_15km %>% 
+  group_by(x, y) %>% 
+  summarise(richness = n())
+
+p15 <- ggplot(rich_15, mapping = aes(x = x , y = y, fill = richness)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "mako", trans = "log", na.value = "transparent") +
+  theme_void()
+
+fagales_50km <- data.table::fread("data/SDM_Results/Fagales_ModelResults_AsCSV_50km.csv")
+rich_50 <- fagales_50km %>% 
+  group_by(x, y) %>% 
+  summarise(richness = n())
+
+p50 <- ggplot(rich_50, mapping = aes(x = x , y = y, fill = richness)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "mako", trans = "log", na.value = "transparent") +
+  theme_void()
+
+```
+
+
+### 15-km resolution
+
+```{r r15, echo=F, fig.width=8, fig.height=3}
+p15
+```
+
+### 50-km resolution
+
+```{r r50, echo=F, fig.width=8, fig.height=3}
+p50
+```
+
+
+## Proportional PD
+
+### 15-km 
+
+```{r pd15, echo=F}
+pd15 <- raster("Biodiverse_Outputs/res15km_PD_P.tif")
+plot(pd15)
+```
+
+### 25-km 
+
+```{r pd25, echo=F}
+pd25 <- raster("Biodiverse_Outputs/res25km_PD_P.tif")
+plot(pd25)
+```
+
+
+### 50-km 
+
+```{r pd50, echo=F}
+pd50 <- raster("Biodiverse_Outputs/res50km_PD_P.tif")
+plot(pd50)
+```
+
+
+From here out, I'm just going to show 25-km resolution results
+
+## RPD
+
+```{r rpd, echo=F, fig.width=8, fig.height=2.5}
+rpdr <- raster("Biodiverse_Outputs/res25km_PHYLO_RPD2.tif")
+rpd_df <- raster::as.data.frame(rpdr, xy = T) %>% 
+  na.omit() %>% 
+  rename(RPD = 3)
+
+ggplot() +
+  geom_tile(rpd_df, mapping = aes(x = x, y = y, fill = RPD)) +
+  scale_fill_viridis_c(trans = "log") +
+  theme_void()
+```
+
+## PE_CWE
+
+```{r pe, echo=F, fig.width=8, fig.height=2.5}
+rcwe <- raster("Biodiverse_Outputs/res25km_PE_CWE.tif")
+rcwe_df <- raster::as.data.frame(rcwe, xy = T) %>% 
+  na.omit() %>% 
+  rename(PE_CWE = 3)
+
+ggplot() +
+  geom_tile(rcwe_df, mapping = aes(x = x, y = y, fill = PE_CWE)) +
+  scale_fill_viridis_c(trans = "log", na.value = "transparent", 
+                       option = "cividis") +
+  theme_void()
+```
+
+
+## RPE
+
+```{r rpe, echo=F, fig.width=8, fig.height=2.5}
+rper <- raster("Biodiverse_Outputs/res25km_PHYLO_RPD2.tif")
+rpe_df <- raster::as.data.frame(rper, xy = T) %>% 
+  na.omit() %>% 
+  rename(RPE = 3)
+
+ggplot() +
+  geom_tile(rpe_df, mapping = aes(x = x, y = y, fill = RPE)) +
+  scale_fill_viridis_c(trans = "log", option = "plasma") +
+  theme_void()
+```
+
+
+## PMPD
+Phylogenetic Mean Pairwise Distance
+
+```{r pmpd, echo=F, fig.width=8, fig.height=2.5}
+rpmpd <- raster("Biodiverse_Outputs/res50km_PMPD2_MEAN.tif")
+
+rpmpd_df <- raster::as.data.frame(rpmpd, xy = T) %>% 
+  na.omit() %>% 
+  rename(PMPD = 3)
+
+ggplot() +
+  geom_tile(rpmpd_df, mapping = aes(x = x, y = y, fill = PMPD)) +
+  scale_fill_gradientn(trans = "log", na.value = "transparent",
+                       colours = parula(25), guide = "colourbar") +
+  theme_void()
+```
+
+# Randomizations
+
+For these I bumped up to 50km resolution to keep computing time short (~2.5 hours)
+
+## PD Randomization
+
+```{r pd_rand, echo=F, fig.width=8, fig.height=2.5}
+pd_rand <- raster("Randomization_Outputs/rand_50km_PD_P.tif")
+
+pd_rand_df <- raster::as.data.frame(pd_rand, xy = T) %>% 
+  na.omit() %>% 
+  rename(PD_Sig = 3)
+
+pd_rand_df <- pd_rand_df %>% 
+    mutate(Significance = case_when(PD_Sig <= 0.05 ~ "Low",
+                                  PD_Sig >= 0.95 ~ "High")) %>% 
+  filter(!is.na(PD_Sig)) 
+
+ggplot() +
+  geom_tile(pd_rand_df, mapping = aes(x = x, y = y,
+                fill = factor(Significance, levels = c("High", "Low")))) +
+  scale_fill_manual(values = c("dodgerblue2", "red1")) +
+  ggtitle("PD_P Randomization") +
+  labs(fill = "Significance") +
+  theme_void()
+```
+
+## RPD Randomization
+
+```{r rpd_rand, echo=F, fig.width=8, fig.height=2.5}
+rpd_rand <- raster("Randomization_Outputs/rand_50km_PHYLO_RPD2.tif")
+
+rpd_rand_df <- raster::as.data.frame(rpd_rand, xy = T) %>% 
+  na.omit() %>% 
+  rename(RPD_Sig = 3)
+
+rpd_rand_df <- rpd_rand_df %>% 
+    mutate(Significance = case_when(RPD_Sig <= 0.05 ~ "Low",
+                                  RPD_Sig >= 0.95 ~ "High")) %>% 
+  filter(!is.na(RPD_Sig)) 
+
+ggplot() +
+  geom_tile(rpd_rand_df, mapping = aes(x = x, y = y,
+                fill = factor(Significance, levels = c("High", "Low")))) +
+  scale_fill_manual(values = c("dodgerblue2", "red1")) +
+  ggtitle("RPD_P Randomization") +
+  labs(fill = "Significance") +
+  theme_void()
+```
+
+## CANAPE
+
+```{r canape, echo=F, fig.width=8, fig.height=2.5, message=F}
+xx <- raster("Randomization_Outputs/rand_50km_PE_WE_P.tif")
+xx_df <- raster::as.data.frame(xx, xy = TRUE) %>% 
+  dplyr::rename(PE_WE_P = 3)
+
+yy <- raster("Randomization_Outputs/rand_50km_PHYLO_RPE_NULL2.tif")
+yy_df <- raster::as.data.frame(yy, xy = TRUE) %>% 
+  dplyr::rename(RPE_NULL2 = 3)
+
+zz <- raster("Randomization_Outputs/rand_50km_PHYLO_RPE2.tif")
+zz_df <- raster::as.data.frame(zz, xy = TRUE) %>% 
+  dplyr::rename(RPE2 = 3)
+
+
+significance_fun <- function(x, y, z){
+  #  simplify the logic below
+  ifelse(test = is.na(x), yes = 0, no = x)
+  ifelse(test = is.na(y), yes = 0, no = x)
+  ifelse(test = is.na(z), yes = 0.5, no = x)
+  
+  ifelse(test = x <= 0.95 & y <= 0.95, yes = "Not Sig",
+         no = 
+           ifelse(z < 0.025, yes = "Neo",
+                  no = 
+                    ifelse(z > 0.975, yes = "Paleo",
+                           no = "Mixed")
+           ))
+}
+
+Significance <- significance_fun(x = xx_df$PE_WE_P, 
+                                 y = yy_df$RPE_NULL2, 
+                                 z = zz_df$RPE2)
+
+df2 <- left_join(xx_df, yy_df) 
+df2 <- left_join(df2, zz_df)
+
+df3 <- df2 %>% 
+  mutate(PE_WE_P = replace_na(PE_WE_P, 0),
+         RPE_NULL2 = replace_na(RPE_NULL2, 0),
+         RPE2 = replace_na(RPE2, 0.5)) 
+
+Significance <- significance_fun(x = df3$PE_WE_P, y = df3$RPE_NULL2,
+                                 z = df3$RPE2)
+
+canape_csv <- cbind(df3, Significance) %>% 
+  dplyr::select(x, y, Significance)
+
+world <- rnaturalearth::ne_countries(returnclass = "sf")
+
+ggplot() + 
+  geom_sf(world, mapping = aes(), fill = NA, color = "grey25") +
+  geom_tile(canape_csv, mapping = aes(x = x, y = y, fill = Significance)) + 
+  scale_fill_manual(values = c("#CB7FFF", "red", "transparent", "royalblue1")) +
+  theme_void()
+```
