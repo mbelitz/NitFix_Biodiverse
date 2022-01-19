@@ -17,3 +17,5 @@ ggplot() +
   geom_tile(nod_sum, mapping = aes(x = x, y = y, fill = prop_nod)) +
   scale_fill_viridis_c() +
   theme_classic()
+
+ggsave("propNodulating.png")
