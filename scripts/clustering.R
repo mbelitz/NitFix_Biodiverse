@@ -13,9 +13,9 @@ d <- as.dist(m)
 
 h <- hclust(d)
 
-ct <- cutree(h, 9)
+ct <- cutree(h, 12)
 
-ct_df <- data.frame(cutree(h,9))
+ct_df <- data.frame(cutree(h,12))
 
 ct_df <- tibble::rownames_to_column(ct_df, "cell")
 
@@ -32,4 +32,12 @@ cluster_df$cluster <- as.character(cluster_df$cluster)
 ggplot() +
   geom_tile(cluster_df, mapping = aes(x = x, y = y, fill = cluster)) +
   scale_fill_brewer(palette = "Set1") +
+  theme_classic()
+
+
+ggplot() +
+  geom_tile(cluster_df, mapping = aes(x = x, y = y, fill = cluster)) +
+  scale_fill_manual(values = c("black", "red", "blue", "green", "purple", "yellow",
+                      "orange", "pink", "grey", "brown", "grey30", 
+                      "limegreen")) +
   theme_classic()
