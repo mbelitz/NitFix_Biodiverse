@@ -48,5 +48,41 @@ chao_rast <- rast(chao_r)
 f <- focal(chao_rast, w = 9, fun = "modal")
 plot(f)
 
-writeRaster(f, filename = "mimosoidBiodiverse/")
+# extract to resultion of analysis
+rich <- rast("mimosoidBiodiverse/spatial__CHAO2_ESTIMATE.tif")
+
+rich_df <- terra::as.data.frame(rich, xy = T) %>% 
+  mutate(z = 1:150006)
+
+rich_r <- dplyr::select(rich_df, x,y,z) %>% 
+  raster::rasterFromXYZ()
+
+# make f into df to make finer resolution
+f_df <- terra::as.data.frame(f, xy = T) 
+
+# extract cluster vlaues
+spdf <- f_df
+coordinates(spdf) <- ~ x + y
+
+e <- raster::extract(rich_r, spdf)
+
+f_df <- f_df %>% 
+  mutate(z = e)
+
+f_df_lj <- left_join(f_df, rich_df, by = "z") %>% 
+  filter(!is.na(z))
+
+# plot initial result
+ggplot() +
+  geom_tile(f_df_lj, mapping = aes(x = x.y, y = y.y, fill = as.factor(focal_modal))) +
+  coord_equal() +
+  theme_void()
+
+
+csv_toSave <- f_df_lj %>% 
+  dplyr::select(x.y, y.y, focal_modal) %>% 
+  dplyr::rename(x = x.y, y = y.y, cluster = focal_modal)
+
+
+write.csv(x = csv_toSave, file = "mimosoidBiodiverse/clusterCSV.csv", row.names = F)
 
